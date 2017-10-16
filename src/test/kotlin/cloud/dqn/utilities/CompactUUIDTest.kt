@@ -10,7 +10,6 @@ class CompactUUIDTest {
                 times = 4000,
                 action = {
                     val compactUUID = CompactUUID()
-                    println("working: $it")
                     Assert.assertTrue("uuid: ${compactUUID.uuid}", compactUUID.validateConversion())
                 }
         )

@@ -16,10 +16,10 @@ class LongId {
         this.str = longToBase64Str(this.long, charset)
     }
 
-    constructor(str: String, charset: Charset = DEFAULT_CHARSET) {
+    private constructor(long: Long, str: String, charset: Charset) {
         this.charset = charset
-        this.str = str.trim()
-        this.long = base64toLong(this.str, charset)
+        this.str = str
+        this.long = long
     }
 
     fun validConversion(): Boolean {
@@ -33,41 +33,39 @@ class LongId {
         private val DECODER = Base64.getUrlDecoder()
         private val ZERO_BYTE: Byte = 0
 
+        fun from(str: String, charset: Charset = DEFAULT_CHARSET): LongId? {
+            val trimmed = str.trim()
+            base64toLong(trimmed, charset)?.let { long ->
+                if (trimmed == longToBase64Str(long, charset)) {
+                    return LongId(long, trimmed, charset)
+                }
+            }
+            return null
+        }
+
         fun longToBase64Str(long: Long, charset: Charset): String {
             val byteArrayLong = Longs.toByteArray(long)
             val compacted = removeLeftZeroPadding(byteArrayLong)
             return byteArrayToBase64String(compacted, charset)
         }
 
-        fun base64toLong(str: String, charset: Charset): Long {
-            val decodedByteArray = base64StringToByteArray(str, charset)
-            val padded = addLeftZeroPadding(decodedByteArray)
-            return Longs.fromByteArray(padded)
-        }
-
-        @JvmStatic fun main(args: Array<String>) {
-            var index = 0L
-            val max = Long.MAX_VALUE
-            while(index < max) {
-                if (index % 1000L == 0L) {
-                    println("$index / $max")
-                }
-                val longId = LongId(index)
-                val strId = LongId(longId.str)
-                if (!longId.validConversion()) {
-                    println("\tINVALID: $index")
-                }
-                index++
+        fun base64toLong(str: String, charset: Charset): Long? {
+            base64StringToByteArray(str, charset)?.let {
+                return Longs.fromByteArray(addLeftZeroPadding(it))
             }
-            println("hi")
+            return null
         }
 
         private fun byteArrayToBase64String(byteArray: ByteArray, charset: Charset): String {
             return String(ENCODER.encode(byteArray), charset)
         }
 
-        private fun base64StringToByteArray(base64str: String, charset: Charset): ByteArray {
-            return DECODER.decode(base64str.toByteArray(charset))
+        private fun base64StringToByteArray(base64str: String, charset: Charset): ByteArray? {
+            return try {
+                DECODER.decode(base64str.toByteArray(charset))
+            } catch (e: IllegalArgumentException) {
+                null
+            }
         }
 
         private fun addLeftZeroPadding(byteArray: ByteArray): ByteArray {

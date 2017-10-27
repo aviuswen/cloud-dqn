@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration packages="com.amazonaws.services.lambda.runtime.log4j2.LambdaAppender">
+
+    <!--
+    Copied from:
+        http://docs.aws.amazon.com/lambda/latest/dg/java-logging.html#java-wt-logging-using-log4j2.8
+    -->
+
+    <Appenders>
+        <Lambda name="Lambda">
+            <PatternLayout>
+                <pattern>%d{yyyy-MM-dd HH:mm:ss} %X{AWSRequestId} %-5p %c{1}:%L - %m%n</pattern>
+            </PatternLayout>
+        </Lambda>
+    </Appenders>
+    <Loggers>
+        <Root level="debug">
+            <AppenderRef ref="Lambda" />
+        </Root>
+    </Loggers>
+</Configuration>

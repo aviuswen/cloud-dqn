@@ -6,6 +6,9 @@ import java.nio.ByteOrder
 import java.nio.charset.Charset
 import java.util.*
 
+/**
+ * Conversion from a UUID to a base64 string
+ */
 class CompactUUID {
     val uuid: UUID
     val str: String

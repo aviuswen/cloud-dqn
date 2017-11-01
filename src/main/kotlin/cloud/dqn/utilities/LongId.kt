@@ -4,6 +4,9 @@ import com.google.common.primitives.Longs
 import java.nio.charset.Charset
 import java.util.*
 
+/**
+ * Converts a Long to a base64 string without padding
+ */
 class LongId {
 
     val long: Long

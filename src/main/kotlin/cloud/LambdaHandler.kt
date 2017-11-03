@@ -35,6 +35,7 @@ class LambdaHandler: RequestStreamHandler {
 
     /**
      * Utilizing AWS Lambda Proxy integrations (No aws integrated response after lambda finishes)
+     * resource: http://docs.aws.amazon.com/apigateway/latest/developerguide/set-up-lambda-proxy-integrations.html#api-gateway-simple-proxy-for-lambda-output-format
      *  Request body (attribute: input) is:
         {
           "params": {

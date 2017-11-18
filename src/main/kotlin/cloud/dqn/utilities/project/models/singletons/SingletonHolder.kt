@@ -1,6 +1,7 @@
 package cloud.dqn.utilities.project.models.singletons
 
 /**
+ * Base companion object to be used for Singletons
  * Lifted from: https://medium.com/@BladeCoder/kotlin-singletons-with-argument-194ef06edd9e
  *
  * Example usage:
@@ -14,24 +15,22 @@ package cloud.dqn.utilities.project.models.singletons
 
     Manager.getInstance(context).doStuff()
  */
-open class SingletonHolder<out T, in A>(creator: (A?) -> T) {
-    private var creator: ((A?) -> T)? = creator
+open class SingletonHolder<out T, in ARGS>(constructorMethod: (ARGS) -> T) {
+    private var constructorMethod: ((ARGS) -> T)? = constructorMethod
     @Volatile private var instance: T? = null
 
-    fun getInstance(arg: A? = null): T {
-        val i = instance
-        if (i != null) {
-            return i
-        }
+    fun getInstance(arg: ARGS): T {
+
+        instance?.let { return it }
 
         return synchronized(this) {
             val i2 = instance
             if (i2 != null) {
                 i2
             } else {
-                val created = creator!!(arg)
+                val created = constructorMethod!!(arg)
                 instance = created
-                creator = null
+                constructorMethod = null
                 created
             }
         }

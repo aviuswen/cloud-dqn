@@ -1,16 +1,15 @@
 package cloud.dqn.utilities.project.models.singletons
 
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDB
+import cloud.dqn.utilities.project.models.factories.DynamoDBFactory
+import cloud.dqn.utilities.project.models.factories.InitParams
 import com.amazonaws.services.dynamodbv2.document.DynamoDB
 
-
-class DynClientSingleton private constructor(initParams: InitParams? = null) {
-    val client: DynamoDB
+class DynClientSingleton private constructor(initParams: InitParams = InitParams()) {
+    private val client: DynamoDB
 
     init {
-        val amazonDynamoDB: AmazonDynamoDB = DynAmazonDynamoDB.factory(initParams)
-        this.client = DynamoDB(amazonDynamoDB)
+        this.client = DynamoDBFactory.build(initParams)
     }
 
-    companion object: SingletonHolder<DynClientSingleton, InitParams?>(::DynClientSingleton)
+    companion object: SingletonHolder<DynClientSingleton, InitParams>(::DynClientSingleton)
 }

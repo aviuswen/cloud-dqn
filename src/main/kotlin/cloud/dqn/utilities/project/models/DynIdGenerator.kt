@@ -1,19 +1,15 @@
 package cloud.dqn.utilities.project.models
 
 import cloud.dqn.utilities.LongId
-import cloud.dqn.utilities.project.models.singletons.DynAmazonDynamoDB
-import cloud.dqn.utilities.project.models.singletons.DynClientSingleton
-import cloud.dqn.utilities.project.models.singletons.DynamoDBMapperSingleton
-import cloud.dqn.utilities.project.models.singletons.InitParams
+import cloud.dqn.utilities.project.models.factories.AmazonDynamoDBFactory
+import cloud.dqn.utilities.project.models.response.DataResponse
+import cloud.dqn.utilities.project.models.factories.InitParams
+import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBAttribute
 import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBHashKey
-import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBRangeKey
 import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBTable
-import com.amazonaws.services.dynamodbv2.document.UpdateItemOutcome
+import com.amazonaws.services.dynamodbv2.document.DynamoDB
 import com.amazonaws.services.dynamodbv2.document.spec.UpdateItemSpec
-import com.amazonaws.services.dynamodbv2.model.AttributeValue
-import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput
-import com.amazonaws.services.dynamodbv2.model.ReturnValue
-import com.amazonaws.services.dynamodbv2.model.UpdateItemResult
+import com.amazonaws.services.dynamodbv2.model.*
 
 /**
  * Represents a table in DynamoDB in order to generate
@@ -30,7 +26,7 @@ class DynIdGenerator {
     @DynamoDBHashKey(attributeName = DYN_CONST.ID)
     var id: String? = null
 
-    @DynamoDBRangeKey(attributeName = DYN_CONST.COUNT_VALUE)
+    @DynamoDBAttribute(attributeName = DYN_CONST.COUNT_VALUE)
     var count: Long? = null
 
     object DYN_CONST {
@@ -43,42 +39,50 @@ class DynIdGenerator {
         /**
          * Generates a new stringId based upon the item corresponding
          * to the @param id;  If id does not exist in the table yet,
-         * a new row is generated and initialized to a value of 1
-         *
-         * TODO: handle exceptions at updateItem
+         * a new row is generated and initialized to a value of 1.
+         * Atomically increments the count in the item
          */
-        fun factory(id: String): String? {
+        fun build(id: String, dynamoDB: DynamoDB): DataResponse<LongId?> {
             val updateItemSpec = UpdateItemSpec()
                     .withPrimaryKey(DYN_CONST.ID, id)
                     .withNameMap(hashMapOf("#c" to DYN_CONST.COUNT_VALUE))
                     .withValueMap(hashMapOf<String, Any>(":v" to 1))
-                    .withUpdateExpression("set #p = #p + :v")
+                    .withUpdateExpression("add #c :v")
                     .withReturnValues(ReturnValue.ALL_NEW)
-            val table = DynClientSingleton
-                    .getInstance()
-                    .client
-                    .getTable(DYN_CONST.TABLE_NAME)
-            val updateItemOutcome: UpdateItemOutcome = table.updateItem(updateItemSpec)
+            val table = dynamoDB.getTable(DYN_CONST.TABLE_NAME)
+            val updateItemOutcome = try {
+                table.updateItem(updateItemSpec)
+            } catch (e: Exception) {
+                return DataResponse(exception = e)
+            }
             val updateItemResult: UpdateItemResult = updateItemOutcome.updateItemResult
-            val attributes: Map<String, AttributeValue> = updateItemResult.attributes
-            val attributeValue: AttributeValue? = attributes[DYN_CONST.COUNT_VALUE]
-            return attributeValue?.let {
-                val attributeValueAsLong = it.n?.toLongOrNull()
-                attributeValueAsLong?.let {
-                    val longId = LongId(it)
-                    longId.str
+            val attributeValue: AttributeValue? = updateItemResult.attributes[DYN_CONST.COUNT_VALUE]
+
+            return if (attributeValue == null) {
+                DataResponse(error = "Response from table did not include attribute: ${DYN_CONST.COUNT_VALUE}")
+            } else {
+                val attributeValueAsLong = attributeValue.n?.toLongOrNull()
+                if (attributeValueAsLong == null) {
+                    DataResponse<LongId?>(error = "Response attribute ${DYN_CONST.COUNT_VALUE} was not convertable to a long")
+                } else {
+                    val longId = LongId(attributeValueAsLong)
+                    if (!longId.validConversion()) {
+                        DataResponse(data = longId, error = "LongId generated was not two way convertable")
+                    } else {
+                        DataResponse(data = longId)
+                    }
                 }
             }
         }
 
-        fun createTable(initParams: InitParams?) {
-            val mapper = DynamoDBMapperSingleton.getInstance().mapper
-            val createTableRequest = mapper.generateCreateTableRequest(DynIdGenerator::class.java)
-            createTableRequest.provisionedThroughput =
-                    ProvisionedThroughput(1L, 1L)
-            val amazonDynamoDB = DynAmazonDynamoDB.factory(initParams)
+        fun createTable(initParams: InitParams = InitParams()): DataResponse<CreateTableResult?> {
+            val amazonDynamoDB = AmazonDynamoDBFactory.build(initParams)
+            return DynTable(amazonDynamoDB).create(DynIdGenerator::class.java)
+        }
 
-            amazonDynamoDB.createTable(createTableRequest)
+        fun getTableDescription(initParams: InitParams = InitParams()): DataResponse<TableDescription?> {
+            val amazonDynamoDB = AmazonDynamoDBFactory.build(initParams)
+            return DynTable(amazonDynamoDB).getDescription(DYN_CONST.TABLE_NAME)
         }
 
     }

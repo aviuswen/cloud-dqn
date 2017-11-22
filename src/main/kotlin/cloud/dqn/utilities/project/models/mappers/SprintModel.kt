@@ -9,8 +9,8 @@ import com.amazonaws.services.dynamodbv2.model.*
 /**
  * TODO SET SOFT LIMITS ON LENGTHS
  */
-@DynamoDBTable(tableName = Sprint.DYN_CONST.TABLE_NAME)
-class Sprint: Metadata {
+@DynamoDBTable(tableName = SprintModel.DYN_CONST.TABLE_NAME)
+class SprintModel : Metadata {
 
     constructor(): super()
 
@@ -65,28 +65,41 @@ class Sprint: Metadata {
     object DYN_CONST {
         const val TABLE_NAME = "p-Sprint"
         const val PROJECT_ID = "project-id"
+        val KEY_SCHEMA = listOf(
+                KeySchemaElement(DYN_CONST.PROJECT_ID, KeyType.HASH),
+                KeySchemaElement(Metadata.DYN_CONST.ID, KeyType.RANGE)
+        )
         const val START = "start"
         const val GSI_PROJECT_ID_TO_START = "i-p-s"
+        val GSI_PROJECT_ID_TO_START_KEY_SCHEMA = listOf (
+                KeySchemaElement(DYN_CONST.PROJECT_ID, KeyType.HASH),
+                KeySchemaElement(DYN_CONST.START, KeyType.RANGE)
+        )
+
     }
 
     companion object {
         private val MAX_ANALYSIS_LENGTH = 512
 
         // TODO TEST
-        fun createTable(initParams: InitParams = InitParams()): DataResponse<CreateTableResult?> {
+        fun createTable(
+                initParams: InitParams = InitParams()
+        ): DataResponse<CreateTableResult?> {
             val provisioning = ProvisionedThroughput(1L, 1L)
+
             val gsi = GlobalSecondaryIndex()
                     .withIndexName(DYN_CONST.GSI_PROJECT_ID_TO_START)
                     .withProjection(Projection().withProjectionType(ProjectionType.ALL))
                     .withProvisionedThroughput(provisioning)
-                    .withKeySchema(
-                            KeySchemaElement(DYN_CONST.PROJECT_ID, KeyType.HASH),
-                            KeySchemaElement(DYN_CONST.START, KeyType.RANGE)
-                    )
+                    .withKeySchema(DYN_CONST.GSI_PROJECT_ID_TO_START_KEY_SCHEMA)
 
             val amz = AmazonDynamoDBFactory.build(initParams)
             val createTableRequest = DynamoDBMapper(amz)
-                    .generateCreateTableRequest(Sprint::class.java)
+                    .generateCreateTableRequest(SprintModel::class.java)
+                    .withKeySchema(DYN_CONST.KEY_SCHEMA)
+                    .withAttributeDefinitions(
+                            AttributeDefinition(Metadata.DYN_CONST.ID, ScalarAttributeType.S),
+                            AttributeDefinition(DYN_CONST.START, ScalarAttributeType.N) )
                     .withProvisionedThroughput(provisioning)
                     .withGlobalSecondaryIndexes(gsi)
             return try {

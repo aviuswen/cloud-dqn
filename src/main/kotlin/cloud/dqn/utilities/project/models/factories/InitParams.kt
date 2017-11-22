@@ -10,6 +10,19 @@ import com.amazonaws.regions.Regions
  *
  *  Typical usage should be with awsCredentials == null as
  *      loading should be done with an AWS IAM role
+ *
+ * Load credentials with InitParams for your own account
+ * Requires that credentials have access to
+ * create/describe dynamoDB tables
+ *
+ * @see com.amazonaws.auth.BasicAWSCredentials
+ *
+ * ie:
+ * val credentials = BasicAWSCredentials("accessKey", "secretKey")
+ * val init =  InitParams(
+ *                  awsRegion = Regions.DEFAULT_REGION,
+ *                  awsCredentials = credentials
+ *             )
  */
 data class InitParams(
         val awsRegion: com.amazonaws.regions.Regions = Regions.US_WEST_1,

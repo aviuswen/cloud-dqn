@@ -72,12 +72,4 @@ class Project {
         project.dynId(id)
         return DynamoDBMapper(amz).load(project)
     }
-
-    fun query(
-            user: String,
-            amz: AmazonDynamoDB
-    ) {
-
-    }
-
 }

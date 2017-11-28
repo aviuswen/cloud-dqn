@@ -1,9 +1,13 @@
 package cloud.dqn.utilities.project.models.mappers
 
+import cloud.dqn.utilities.project.models.factories.AmazonDynamoDBFactory
+import cloud.dqn.utilities.project.models.factories.InitParams
+import cloud.dqn.utilities.project.models.response.DataResponse
 import com.amazonaws.services.dynamodbv2.datamodeling.*
+import com.amazonaws.services.dynamodbv2.model.*
 
-@DynamoDBTable(tableName = Daily.DYN_CONST.TABLE_NAME)
-class Daily: Metadata {
+@DynamoDBTable(tableName = DailyModel.DYN_CONST.TABLE_NAME)
+class DailyModel : Metadata {
 
     constructor(): super()
     @DynamoDBIndexHashKey(
@@ -13,6 +17,7 @@ class Daily: Metadata {
     var sprintId: String? = null        // Primary hash
 
     @DynamoDBIndexRangeKey(
+            attributeName = DYN_CONST.DATE,
             globalSecondaryIndexNames = arrayOf(
                     DYN_CONST.GSI_SPRINT_TO_DATE,
                     DYN_CONST.GSI_PROJECT_TO_DATE,
@@ -20,6 +25,7 @@ class Daily: Metadata {
     var date: Int? = null               // GSI sprintId; date
 
     @DynamoDBIndexHashKey(
+            attributeName = DYN_CONST.USER,
             globalSecondaryIndexName = DYN_CONST.GSI_USER_TO_DATE)
     var user: String? = null            // GSI user; date
 
@@ -68,9 +74,61 @@ class Daily: Metadata {
         const val TABLE_NAME = "p-Daily"
         const val SPRINT_ID = "sprint-id"
         const val PROJECT_ID = "project-id"
+        const val DATE = "date"
+        const val USER = "user"
+        val KEY_SCHEMA = listOf(
+                KeySchemaElement(SPRINT_ID, KeyType.HASH),
+                KeySchemaElement(Metadata.DYN_CONST.ID, KeyType.RANGE)
+        )
+
         const val GSI_SPRINT_TO_DATE = "i-s-d"
+        val GSI_SPRINT_KEY = listOf(
+                KeySchemaElement(SPRINT_ID, KeyType.HASH),
+                KeySchemaElement(DATE, KeyType.RANGE)
+        )
+
         const val GSI_USER_TO_DATE = "i-u-d"
+        val GSI_USER_KEY = listOf(
+                KeySchemaElement(USER, KeyType.HASH),
+                KeySchemaElement(DATE, KeyType.RANGE)
+        )
+
         const val GSI_PROJECT_TO_DATE = "i-p-d"
+        val GSI_PROJECT_KEY = listOf(
+                KeySchemaElement(PROJECT_ID, KeyType.HASH),
+                KeySchemaElement(DATE, KeyType.RANGE)
+        )
+
+        val ATTRIBUTE_DEF = arrayOf(
+                AttributeDefinition(Metadata.DYN_CONST.ID, ScalarAttributeType.S),
+                AttributeDefinition(DATE, ScalarAttributeType.N),
+                AttributeDefinition(USER, ScalarAttributeType.S),
+                AttributeDefinition(PROJECT_ID, ScalarAttributeType.S)
+        )
+    }
+
+    companion object {
+        // TODO TEST
+        fun createTable(
+                initParams: InitParams = InitParams()
+        ): DataResponse<CreateTableResult?> {
+            val provisioning = ProvisionedThroughput(1L, 1L)
+            val gsi0 = GlobalSecondaryIndex()
+                    .withIndexName(DYN_CONST.GSI_SPRINT_TO_DATE)
+                    .withKeySchema(DYN_CONST.GSI_SPRINT_KEY)
+
+
+
+            val amz = AmazonDynamoDBFactory.build(initParams)
+            val createTableRequest = DynamoDBMapper(amz)
+                    .generateCreateTableRequest(DailyModel::class.java)
+                    .withKeySchema(DYN_CONST.KEY_SCHEMA)
+                    .withAttributeDefinitions(*(DYN_CONST.ATTRIBUTE_DEF)) // appending version
+
+
+
+            TODO("finish")
+        }
     }
 
 }
